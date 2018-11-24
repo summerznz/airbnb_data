@@ -1,0 +1,40 @@
+---
+title: "airbnb"
+author: "name"
+date: "11/16/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(leaflet)
+la <- read.csv("la.csv")
+ny <- read.csv("ny.csv")
+van <- read.csv("van.csv")
+sea <- read.csv("sea.csv")
+airbnb_pre <- rbind(la, ny, van, sea)
+airbnb_pre2 <- read.csv("air.csv")
+```
+
+```{r}
+##Data Cleaning 
+##Separte four cities and Add city name with new variable "Area" 
+airbnb_la <- airbnb_pre2 %>% filter(str_detect(street, "CA")) 
+airbnb_la$Area <- rep("Los Angelas",nrow(airbnb_la))
+airbnb_ny <- airbnb_pre2 %>% filter(str_detect(street, "NY"))
+airbnb_ny$Area <- rep("New York",nrow(airbnb_ny))
+airbnb_se <- airbnb_pre2 %>% filter(str_detect(street, "WA"))
+airbnb_se$Area <- rep("Seattle",nrow(airbnb_se))
+airbnb_va <- airbnb_pre2 %>% filter(str_detect(street, "Canada"))
+airbnb_va$Area <- rep("Vancouver",nrow(airbnb_va))
+
+```
+
+```{r}
+head(airbnb_la)
+ggplot(airbnb_la) + geom_point(aes(x=bathrooms, y=price)) 
+model1 <- lmer(price ~ bathrooms + bedrooms + beds + review_scores_rating + (1|room_type), airbnb_pre2)
+summary(model1)
+```
+
