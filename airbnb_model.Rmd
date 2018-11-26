@@ -6,25 +6,31 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,out.width="0.9\\linewidth",dev="png",fig.align  = 'center')
+pacman::p_load(ggplot2,knitr,arm,data.table,foreign,gridExtra,car,stringr,rstan,rstanarm,zoo)
+library(tidyverse)
+library(leaflet)
+library(RColorBrewer)
+la <- read.csv("la.csv")
+ny <- read.csv("ny.csv")
+van <- read.csv("van.csv")
+sea <- read.csv("sea.csv")
+airbnb_pre <- rbind(la, ny, van, sea)
+airbnb_pre2 <- read.csv("air.csv")
+airbnb_pre2 <- airbnb_pre2 %>% filter(price > 0 & price <=5000)
+###Data Clean
+airbnb_la <- airbnb_pre2 %>% filter(str_detect(street, "CA")) 
+airbnb_la$Area <- rep("Los Angelas",nrow(airbnb_la))
+airbnb_ny <- airbnb_pre2 %>% filter(str_detect(street, "NY"))
+airbnb_ny$Area <- rep("New York",nrow(airbnb_ny))
+airbnb_se <- airbnb_pre2 %>% filter(str_detect(street, "WA"))
+airbnb_se$Area <- rep("Seattle",nrow(airbnb_se))
+airbnb_va <- airbnb_pre2 %>% filter(str_detect(street, "Canada"))
+airbnb_va$Area <- rep("Vancouver",nrow(airbnb_va))
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+model1 <- lmer(price ~ bathrooms + bedrooms + beds + review_scores_rating + (1|room_type), airbnb_pre2)
+summary(model1)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
