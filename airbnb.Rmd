@@ -61,7 +61,7 @@ ggplot(airbnb_la_1, aes(price, fill = room_type)) +
   scale_fill_brewer(palette = "RdPu") + 
   scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 100)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution in LA($80 ~$1000)") + 
+  ggtitle("Price Distribution in LA($0 ~$1000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -90,7 +90,7 @@ ggplot(airbnb_ny_1, aes(price, fill = room_type)) +
   scale_fill_brewer(palette = "RdPu") + 
   scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 100)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution in NYC($80 ~$1000)") + 
+  ggtitle("Price Distribution in NYC($0 ~$1000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -120,7 +120,7 @@ ggplot(airbnb_se_1, aes(price, fill = room_type)) +
   scale_fill_brewer(palette = "RdPu") + 
   scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 100)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution in Seattle($80 ~$1000)") + 
+  ggtitle("Price Distribution in Seattle($0 ~$1000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -150,7 +150,7 @@ ggplot(airbnb_va_1, aes(price, fill = room_type)) +
   scale_fill_brewer(palette = "RdPu") + 
   scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 100)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution in Vancouver($80 ~$1000)") + 
+  ggtitle("Price Distribution in Vancouver($0 ~$1000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -173,14 +173,14 @@ ggplot(airbnb_va_2, aes(price, fill = room_type)) +
 
 ```{r}
 ##price distribution in all four cities
-##0~500
-airbnb_pre2_1 <- airbnb_pre2 %>% filter(price > 0 & price <= 500)
+##0~1000
+airbnb_pre2_1 <- airbnb_pre2 %>% filter(price > 0 & price <= 1000)
 ggplot(airbnb_pre2_1, aes(price, fill = room_type)) + 
   geom_histogram(binwidth = 10) + theme_light() +   
   scale_fill_brewer(palette = "RdPu") + 
-  scale_x_continuous(name ="Price ($)", breaks = seq(0, 500, by = 50)) + 
+  scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 100)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution($0 ~$500)") + 
+  ggtitle("Price Distribution($0 ~$1000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -188,13 +188,13 @@ ggplot(airbnb_pre2_1, aes(price, fill = room_type)) +
   theme(plot.title = element_text(hjust = 0.5)) 
 
 #500~1000
-airbnb_pre2_2 <- airbnb_pre2 %>% filter(price > 500 & price <= 1000)
+airbnb_pre2_2 <- airbnb_pre2 %>% filter(price > 1000 & price <= 5000)
 ggplot(airbnb_pre2_2, aes(price, fill = room_type)) + 
   geom_histogram(binwidth = 10) + theme_light() +   
   scale_fill_brewer(palette = "RdPu") + 
-  scale_x_continuous(name ="Price ($)", breaks = seq(500, 1000, by = 50)) + 
+  scale_x_continuous(name ="Price ($)", breaks = seq(1000, 5000, by = 1000)) + 
   scale_y_continuous(name="Frequency of Price ")+ 
-  ggtitle("Price Distribution($500 ~$1000)") + 
+  ggtitle("Price Distribution($1000 ~$5000)") + 
   theme(axis.title.x = element_text(face="bold",  size=12), 
         axis.title.y = element_text(face="bold",  size=12),
         plot.title = element_text(size=14, face="bold"),  
@@ -202,17 +202,19 @@ ggplot(airbnb_pre2_2, aes(price, fill = room_type)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+## Price ($0 ~ $1000)
+
 ### Price over Bedrooms 
 ```{r}
 ##bedroom ~ price in LA
-airbnb_la_bed <- airbnb_la %>% filter(price > 0 & price <= 500)
+airbnb_la_bed <- airbnb_la %>% filter(price > 0 & price <= 1000)
 bedroom_la <- airbnb_la_bed %>% dplyr::select(price, bedrooms)
 bedroom_la <- bedroom_la  %>% group_by(bedrooms) %>% summarise(mean_price = mean(price))
 #barplot
 ggplot(bedroom_la, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) + 
       geom_bar(stat="identity", fill="pink") +  
       scale_x_continuous(name ="No. of Bedrooms", breaks = seq(0, 10, by = 1)) +   
-      scale_y_continuous(name = "Mean price", breaks = seq(0, 500, by = 50)) + theme_bw() + 
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 100)) + theme_bw() + 
       ggtitle("Price over different number of bedrooms in LA") +
       theme(axis.title.x = element_text(face="bold",  size=12), 
             axis.title.y = element_text(face="bold",  size=12),
@@ -221,14 +223,14 @@ ggplot(bedroom_la, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) +
 
 
 ##bedroom ~ price in NY
-airbnb_ny_bed <- airbnb_ny %>% filter(price > 0 & price <= 500)
+airbnb_ny_bed <- airbnb_ny %>% filter(price > 0 & price <= 1000)
 bedroom_ny <- airbnb_ny_bed %>% dplyr::select(price, bedrooms)
 bedroom_ny <- bedroom_ny  %>% group_by(bedrooms) %>% summarise(mean_price = mean(price))
 #barplot
 ggplot(bedroom_ny, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) + 
       geom_bar(stat="identity", fill="pink") +  
       scale_x_continuous(name ="No. of Bedrooms", breaks = seq(0, 11, by = 1)) +   
-      scale_y_continuous(name = "Mean price", breaks = seq(0, 500, by = 50))+ theme_bw() +
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 100))+ theme_bw() +
       ggtitle("Price over different number of bedrooms in NYC") + 
       theme(axis.title.x = element_text(face="bold",  size=12), 
             axis.title.y = element_text(face="bold",  size=12),
@@ -237,14 +239,14 @@ ggplot(bedroom_ny, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) +
 
 
 ##bedroom ~ price in SE
-airbnb_se_bed <- airbnb_se %>% filter(price > 0 & price <= 500)
+airbnb_se_bed <- airbnb_se %>% filter(price > 0 & price <= 1000)
 bedroom_se <- airbnb_se_bed %>% dplyr::select(price, bedrooms)
 bedroom_se <- bedroom_se  %>% group_by(bedrooms) %>% summarise(mean_price = mean(price))
 #barplot
 ggplot(bedroom_se, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) + 
       geom_bar(stat="identity", fill="pink") +  
-      scale_x_continuous(name = "No. of Bedrooms", breaks = seq(0, 8, by = 1)) +   
-      scale_y_continuous(name = "Mean price", breaks = seq(0, 500, by = 50))+ theme_bw()+
+      scale_x_continuous(name = "No. of Bedrooms", breaks = seq(0, 10, by = 1)) +   
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 100))+ theme_bw()+
       ggtitle("Price over different number of bedrooms in Seattle") +  
       theme(axis.title.x = element_text(face="bold",  size=12), 
             axis.title.y = element_text(face="bold",  size=12),
@@ -253,14 +255,14 @@ ggplot(bedroom_se, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) +
 
 
 ##bedroom ~ price in VA
-airbnb_va_bed <- airbnb_va %>% filter(price > 0 & price <= 500)
+airbnb_va_bed <- airbnb_va %>% filter(price > 0 & price <= 1000)
 bedroom_va <- airbnb_va_bed %>% dplyr::select(price, bedrooms)
 bedroom_va <- bedroom_va  %>% group_by(bedrooms) %>% summarise(mean_price = mean(price))
 #barplot
 ggplot(bedroom_va, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) + 
       geom_bar(stat="identity", fill="pink") +  
       scale_x_continuous(name ="No. of Bedrooms", breaks = seq(0, 9, by = 1)) +   
-      scale_y_continuous(name = "Mean price", breaks = seq(0, 500, by = 50))+ theme_bw() +
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 100))+ theme_bw() +
       ggtitle("Price over different number of bedrooms in Vancouver") +  
       theme(axis.title.x = element_text(face="bold",  size=12), 
             axis.title.y = element_text(face="bold",  size=12),
@@ -269,7 +271,158 @@ ggplot(bedroom_va, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) +
 ```
 
 ```{r}
-airbnb_pre2_1 <- airbnb_pre2 %>% filter(price > 0 & price <= 500)
+airbnb_pre2_1 <- airbnb_pre2 %>% filter(price > 0 & price <= 1000)
 ggplot(airbnb_pre2_1, aes(x=bedrooms, y=price)) + geom_point() + geom_smooth(method = "lm")
+ggplot(airbnb_pre2_1, aes(x=bathrooms, y=price)) + geom_point() + geom_smooth(method = "lm")
+```
+
+### Price over Different Neighbourhoods
+```{r,fig.width=5,fig.height=3}
+###LA neighbourhood ~ Price
+###since LA has 587 neighbourhood, I decide to use city as alternative choice.
+airbnb_la_nei <- airbnb_la %>% filter(price > 0 & price <= 1000)
+neigh_la <- airbnb_la_nei %>% dplyr::select(price, neighbourhood_cleansed)
+neigh_la <- neigh_la  %>% group_by(neighbourhood_cleansed) %>% summarise(mean_price = mean(price))
+ggplot(neigh_la, aes(y=mean_price, x=neighbourhood_cleansed,fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink") +  
+      scale_x_discrete(name ="Neighbourhood in LA") +   
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in LA") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+#unique(airbnb_la$city)
+
+
+
+###Seattle Neightbourhood ~ Price
+airbnb_se_nei <- airbnb_se %>% filter(price > 0 & price <= 1000)
+neigh_se <- airbnb_se_nei %>% dplyr::select(price, neighbourhood_cleansed)
+neigh_se <- neigh_se  %>% group_by(neighbourhood_cleansed) %>% summarise(mean_price = mean(price))
+ggplot(neigh_se, aes(y=mean_price, x = 
+                     reorder(x=neighbourhood_cleansed,-mean_price),
+                     fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in Seattle") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in Seattle") +  
+      theme(axis.title.x = element_text(face="bold",  size=14), 
+            axis.title.y = element_text(face="bold",  size=14),
+            plot.title = element_text(size=16, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 8),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+
+###NYC Neightbourhood ~ Price
+airbnb_ny_nei <- airbnb_ny %>% filter(price > 0 & price <= 1000)
+neigh_ny <- airbnb_ny_nei %>% dplyr::select(price, neighbourhood_cleansed)
+neigh_ny <- neigh_ny  %>% group_by(neighbourhood_cleansed) %>% summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+
+g1 <- ggplot(subset(neigh_ny, mean_price %in% mean_price[1:60]), aes(y=mean_price,
+                       reorder(x=neighbourhood_cleansed,-mean_price),
+                       fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in NYC") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in NYC(1)") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 8),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+
+g2 <- ggplot(subset(neigh_ny, mean_price %in% mean_price[61:120]), aes(y=mean_price,
+                       reorder(x=neighbourhood_cleansed,-mean_price),
+                       fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in NYC") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in NYC(2)") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 8),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+g3 <- ggplot(subset(neigh_ny, mean_price %in% mean_price[121:180]), aes(y=mean_price,
+                       reorder(x=neighbourhood_cleansed,-mean_price),
+                       fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in NYC") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in NYC(3)") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 8),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+g4 <- ggplot(subset(neigh_ny, mean_price %in% mean_price[181:226]), aes(y=mean_price,
+                       reorder(x=neighbourhood_cleansed,-mean_price),
+                       fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in NYC") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in NYC(4)") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 8),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+g1
+g2
+g3
+g4
+#grid.arrange(g1,g2,g3,g4)
+
+
+###Vancouver Neightbourhood ~ Price
+airbnb_va_nei <- airbnb_va %>% filter(price > 0 & price <= 1000)
+neigh_va <- airbnb_va_nei %>% dplyr::select(price, neighbourhood_cleansed)
+neigh_va <- neigh_va  %>% group_by(neighbourhood_cleansed) %>% summarise(mean_price = mean(price))
+ggplot(neigh_va, aes(y=mean_price, x = 
+                     reorder(x=neighbourhood_cleansed,-mean_price),
+                     fill=as.factor(neighbourhood_cleansed))) + 
+      geom_bar(stat="identity", fill="pink", position = "dodge") +  
+      scale_x_discrete(name ="Neighbourhood in Vancouver") +   
+      scale_y_continuous(name = "Mean price ($)", breaks = seq(0, 1000, by = 50))+ theme_bw() +
+      ggtitle("Price over different neighbourhood in Vancouver") +  
+      theme(axis.title.x = element_text(face="bold",  size=14), 
+            axis.title.y = element_text(face="bold",  size=14),
+            plot.title = element_text(size=16, face="bold"),
+            axis.text.x=element_text(angle=90, colour="black", size = 10),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Price ~ SuperHost
+```{r}
+airbnb_la_bed <- airbnb_la %>% filter(price > 0 & price <= 1000)
+airbnb_la_bed <- airbnb_la_bed %>% na.omit(host_is_superhost)
+ggplot(airbnb_la_bed, aes(x=host_is_superhost, y=price)) + 
+      geom_point( aes(color=host_is_superhost)) + geom_smooth(method = "glm") +
+      scale_x_discrete(name ="If/not Superhost",labels=c("f"="No" ,"t"="Yes")) +   
+      scale_y_continuous(name = "price ($)", breaks = seq(0, 1000, by = 100))+ theme_bw() +
+      ggtitle("Price over Superhost in LA") +  
+      theme(axis.title.x = element_text(face="bold",  size=14), 
+            axis.title.y = element_text(face="bold",  size=14),
+            plot.title = element_text(size=16, face="bold"),
+            axis.text.x=element_text(colour="black", size = 10),
+            axis.text.y=element_text(colour="black", size = 10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Price room/ Property type
+```{r}
+unique(airbnb_la$property_type)
+airbnb_la_room <- airbnb_la %>% filter(price > 0 & price <= 1000) %>% dplyr::select(room_type, property_type, bedrooms, price)
 ```
 
