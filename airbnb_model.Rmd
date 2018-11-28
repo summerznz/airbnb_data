@@ -18,6 +18,8 @@ sea <- read.csv("sea.csv")
 airbnb_pre <- rbind(la, ny, van, sea)
 airbnb_pre2 <- read.csv("air.csv")
 airbnb_pre2 <- airbnb_pre2 %>% filter(price > 0 & price <=5000)
+
+
 ###Data Clean
 airbnb_la <- airbnb_pre2 %>% filter(str_detect(street, "CA")) 
 airbnb_la$Area <- rep("Los Angelas",nrow(airbnb_la))
@@ -27,10 +29,33 @@ airbnb_se <- airbnb_pre2 %>% filter(str_detect(street, "WA"))
 airbnb_se$Area <- rep("Seattle",nrow(airbnb_se))
 airbnb_va <- airbnb_pre2 %>% filter(str_detect(street, "Canada"))
 airbnb_va$Area <- rep("Vancouver",nrow(airbnb_va))
+
+airbnb_pre2 <- rbind(airbnb_la,airbnb_ny,airbnb_se,airbnb_va)
 ```
 
+### 1. Fit the Non-Multilevel Models
+
 ```{r}
-model1 <- lmer(price ~ bathrooms + bedrooms + beds + review_scores_rating + (1|room_type), airbnb_pre2)
+#First, I fit a simple linear regression
+lm1 <- lm(price ~ bedrooms + bathrooms + host_is_superhost + accommodates + 
+                  review_scores_rating + room_type + property_type + Area + 
+                  number_of_reviews + cancellation_policy, 
+          data = airbnb_pre2)
+summary(lm1)
+
+lm2 <- lm(price ~ bedrooms + bathrooms + accommodates + review_scores_rating + 
+          Area * room_type + number_of_reviews + 
+            cancellation_policy, data = airbnb_pre2)
+summary(lm2)
+``` 
+
+
+### 2. Fixed-effect Model 
+```{r}
+model1 <- lmer(price ~ bathrooms + bedrooms + accommodates + 
+                 review_scores_rating + (1|room_type) + 
+                 number_of_reviews + cancellation_policy +
+                 (1|Area) + property_type, airbnb_pre2)
 summary(model1)
 ```
 
