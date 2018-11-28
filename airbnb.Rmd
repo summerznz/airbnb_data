@@ -262,11 +262,31 @@ ggplot(bedroom_va, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) +
       theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Geom smooth line ~ bedrooms/bathrooms
+### Geom smooth line ~ bedrooms/bathrooms/accommodates/
 ```{r}
 airbnb_pre2_1 <- airbnb_pre2 %>% filter(price > 0 & price <= 1000)
-ggplot(airbnb_pre2_1, aes(x=bedrooms, y=price)) + geom_point() + geom_smooth(method = "lm")
-ggplot(airbnb_pre2_1, aes(x=bathrooms, y=price)) + geom_point() + geom_smooth(method = "lm")
+ggplot(airbnb_pre2_1, aes(x=bedrooms, y=price)) + geom_point() + 
+      geom_smooth(method = "lm") + theme_bw() + 
+      ggtitle("Price over number of bedrooms")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+ggplot(airbnb_pre2_1, aes(x=bathrooms, y=price)) + geom_point() + 
+      geom_smooth(method = "lm") + theme_bw() + 
+      ggtitle("Price over number of bathrooms")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+ggplot(airbnb_pre2_1, aes(x=accommodates, y=price)) + geom_point() + 
+      geom_smooth(method = "lm") + theme_bw() + 
+      ggtitle("Price over number of accommodates")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+
 ```
 
 ### Price over Different Neighbourhoods
@@ -553,5 +573,31 @@ ggplot(type_va, aes(y=mean_price, x=room_type, fill=room_type)) +
             plot.title = element_text(size=14, face="bold"),  
             axis.text.x  = element_text( vjust=0.5, size=10)) +
       theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Accomodations ~ Price
+```{r}
+airbnb_se_acc <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% dplyr::select(accommodates, price)
+acc_se <- airbnb_se_acc  %>% group_by(accommodates) %>% summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+ggplot(acc_se, aes(y=mean_price, x=accommodates,fill=as.factor(accommodates))) + 
+      geom_bar(stat="identity", fill="pink") +  
+      scale_x_continuous(name = "No. of Accommodates", breaks = seq(0, 50, by = 1)) +   
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 100))+ theme_bw()+
+      ggtitle("Price over number of Accommodates in Seattle") +  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+
+
+```{r}
+hotel <- read.csv2("hotels.csv", header = TRUE, sep = ";", dec = ",")
+View(hotel)
+
+
 ```
 
