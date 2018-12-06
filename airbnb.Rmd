@@ -1,0 +1,558 @@
+---
+title: "Airbnb Pricing Data Analysis"
+author: "Ningze Zu"
+date: "12/06/2018"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,out.width="0.9\\linewidth",dev="png",fig.align  = 'center')
+pacman::p_load(ggplot2,knitr,arm,data.table,foreign,gridExtra,car,stringr,rstan,zoo)
+library(tidyverse)
+library(dplyr)
+library(leaflet)
+library(RColorBrewer)
+library(corrplot)
+library(ggcorrplot)
+library(lattice)
+library(plotly)
+library(png)
+library(scales)
+library(graphics)
+library(ggmap)
+library(leaflet)
+library(readr)
+library(boot)
+library(lme4)
+library(ggpubr)
+air <- read.csv("air.csv")
+airbnb_se <- air %>% dplyr::filter(state == "WA")
+airbnb_se$Area <- rep("Seattle",nrow(airbnb_se))
+sea <- read.csv("sea.csv")
+se <- sea %>% dplyr::filter(state == "WA")
+nei <- data.frame(se$neighbourhood_group_cleansed)
+airbnb_se$market <-NULL
+airbnb_se <- cbind(airbnb_se,nei)
+colnames(airbnb_se)[colnames(airbnb_se)=="se.neighbourhood_group_cleansed"] <- "neighbourhood"
+```
+
+##1. Abstract 
+
+In this project, I will perform an exploratory data analysis to select features and build a model to predict the Airbnb listing prices in Seattle.  
+
+##2. Introduction
+
+####2.1 Background
+```{r out.width = "20%", fig.align = "left", echo=FALSE , message=FALSE, warning=FALSE}
+knitr::include_graphics("download.png")
+```
+Airbnb is a global company that founded in 2008 San Fransisco by  by Brian Chesky, Joe Gebbia, and Nathan Blecharczyk as AirBed & Breakfast.[1] It is an inclusive platform, providing online hospitality service and enabling hosts to list their properties and visitors to rent short-term accommodations. Recently, more and more people start using Airbnb to plan their vacation, business and homestay. Since not many guests and hosts know well about how to fix a fair price of Airbnb rental, making a price predictor that can generate a fair rental price is a good idea. 
+
+To make this pricing tool , I built a regression model that takes some features like bedrooms, accommodates as predictors and price as response. In order to optimize the final model, I did lots of exploratory data analysis to select features as model predictors. 
+
+####2.2 Datasource 
+
+Data source: http://insideairbnb.com/get-the-data.html
+
+“Inside Airbnb Project”[2] is an independent and non-commercial set of tools hosted by Airbnb that
+enables people to explore how Airbnb is really being used in cities around the
+world.
+
+The considered data is the listings dataset in Seattle contains 8625 observations with 30 independent variables. It was scrapped in October 2018. Table 1 below shows the column names of the Airbnb Seattle dataset. 
+
+#####Table 1 
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+a <- names(airbnb_se)
+b <- matrix(a, ncol = 5)
+kable(b)
+```
+
+##3 Exploratory Data Analysis
+
+#####3.1. Price Distribution
+
+The first thing I did is to look into the price distribution in Seattle. Then, I decided to choose price range betweem 0 and 1000 USD since the data contains outliers when the price is over 1000 USD. After excluding the price over 1000 USD, the price distributions are shown as Figure 3.1: 
+
+Figure 3.1 shows a high concentration of listing prices between 0 and 200 USD.
+
+```{r  echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=3}
+##price distribution in all five cities
+##0~1000
+airbnb_se_1 <- airbnb_se %>% dplyr::filter(price > 0 & price <= 1000)
+ggplot(airbnb_se_1, aes(price, fill = room_type)) + 
+  geom_histogram(binwidth = 10) + theme_light() +   
+  scale_fill_brewer(palette = "RdPu") + 
+  scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 200)) + 
+  scale_y_continuous(name="Frequency of Price ")+ 
+  ggtitle("Figure 3.1 Price Distribution($0 ~$1000)") + 
+  theme(axis.title.x = element_text(face="bold",  size=12), 
+        axis.title.y = element_text(face="bold",  size=12),
+        plot.title = element_text(size=14, face="bold"),  
+        axis.text.x  = element_text(vjust=0.5, size=10)) +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+#####3.2. Variables
+
+#####a. Bedrooms
+
+Number of bedrooms will always be a major factor to the rental price of Airbnb. I made a barplot to show the average prices over different number of bedroom. In this case, we can see from Figure 3.2 that there is a certain relationship between the average price of Airbnb listings and number of bedrooms. 
+ 
+```{r  echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=3}
+##bedroom ~ price 
+airbnb_se_bed <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% 
+  filter(bedrooms < 15)
+bedroom_se <- airbnb_se_bed %>% dplyr::select(price, bedrooms)
+bedroom_se <- bedroom_se %>% group_by(bedrooms) %>% summarise(mean_price = mean(price))
+#barplot
+ggplot(bedroom_se, aes(y=mean_price, x=bedrooms,fill=as.factor(bedrooms))) + 
+      geom_bar(stat="identity", fill="pink") +
+      scale_x_continuous(name ="Number of Bedrooms", breaks = seq(0, 50, by = 5)) +   
+      scale_y_continuous(name = "Mean price", breaks = seq(0, 1000, by = 200)) + theme_bw() + 
+      ggtitle("Figure 3.2 Price over different number of bedrooms") +
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+#####b. Bedrooms, Bathrooms, Accommodates, Beds 
+
+Next, I did several scatterplots to show the price versus different variables such as 'bedrooms', 'bathrooms', 'accommodates'and 'beds'. In case it is hard to see if there is relationship between price and each of these vairables , I add a line to see the trend of the points. From Figure 3.3 to Figure 3.6, we can see that number of bedrooms, number of bathrooms, number of accommodates and number of beds have a certain effect on the price of Airbnb listings. 
+
+```{r  echo=FALSE,message=FALSE, warning=FALSE, fig.width=7, fig.height=4}
+airbnb_se_1 <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% 
+  filter(bedrooms < 15) %>% filter(bathrooms < 15) %>% filter(accommodates < 20)
+q1 <- ggplot(airbnb_se_1, aes(x=bedrooms, y=price)) + geom_point(color="pink") + 
+      geom_smooth(method = "lm", color="green") + theme_bw() + 
+      ggtitle("Figure 3.3 Price ~ bedrooms")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+q2 <- ggplot(airbnb_se_1, aes(x=bathrooms, y=price)) + geom_point(color="pink") + 
+      geom_smooth(method = "lm", color="green") + theme_bw() + 
+      ggtitle("Figure 3.4 Price ~ bathrooms")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+q3 <- ggplot(airbnb_se_1, aes(x=accommodates, y=price)) + geom_point(color="pink") + 
+      geom_smooth(method = "lm", color="green") + theme_bw() + 
+      ggtitle("Figure 3.5 ~ accommodates")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+q4 <- ggplot(airbnb_se_1, aes(x=beds, y=price)) + geom_point(color="pink") + 
+      geom_smooth(method = "lm", color="green") + theme_bw() + 
+      ggtitle("Figure 3.6 Price ~ beds")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(q1,q2,q3,q4, nrow=2)
+```
+
+#####c. Property Type
+
+Next, Figure 3.7.1 shows the count of different property types in Seattle. We we can observe the disparity in count of different property types. Some property types have more Airbnb listings than others, most of the Airbnb listings' property types are 'Apartment', 'House' and 'Condo'. To figure out more about property type, I plot a heatmap(Figure 3.7.2) to show the average room prices in different property types with different room types. 
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=4}
+pr_se <- airbnb_se%>% dplyr::select(property_type)
+pr_se <- pr_se %>% group_by(property_type) %>% summarise(n=n())
+
+ggplot(pr_se, aes(y=n, x = 
+                     reorder(x=property_type, n) )) + 
+  geom_bar(fill="lightpink1", stat = "identity") + theme_light() +   
+  scale_x_discrete(name ="Property Type") + 
+  scale_y_continuous(name = "count") +
+  ggtitle("Figure 3.7.1 Count of Property Types") + 
+  theme(axis.title.x = element_text(face="bold",  size=12), 
+        axis.title.y = element_text(face="bold",  size=12),
+        plot.title = element_text(size=14, face="bold"),  
+        axis.text.x  = element_text(vjust=0.5, size=13)) +
+  theme(plot.title = element_text(hjust = 0.5)) + theme(legend.position="none") + coord_flip()
+
+
+airbnb_se_p <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% dplyr::select(room_type, price,property_type)
+p_se <- airbnb_se_p %>% group_by(room_type,property_type) %>% 
+  summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=6, fig.height=4}
+ggplot(data =p_se, mapping = aes(x = room_type,y =property_type, fill = mean_price)) + 
+  geom_tile() + geom_text(aes(label = round(mean_price,0)), size=3)+ scale_fill_gradient(name = "Average Price",
+                      low = "ivory",
+                      high = "hotpink")  + xlab(label = "Room Type") + ylab(label = "property type") +theme_classic()+ ggtitle("Figure 3.7.2 Property type ~ Room type")+ theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+#####d. Room Type
+
+In Airbnb listings, there are three types of room: Entire home/apt, Shared room and Private room. Room type is also a major factor of the price. Figure 3.8.1 shows the proportion of each of these three room type and we can see that there are nearly 74% of rooms are 'Entire Room/Apt'. Further, Figure 3.8.2 below shows that 'Entire room/apt' have a higher average price than 'Shared room' and 'Private room'. 
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=3}
+#### pie chart ~ room type
+airbnb_se_3 <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% dplyr::select(room_type)
+type_sea <- airbnb_se_3  %>% group_by(room_type) %>% 
+  summarise(n=n()) 
+
+colors <- c('pink', 'violet', 'salmon')
+
+plot_ly(type_sea,  labels = ~room_type, values = ~n, type = 'pie',  textposition = 'inside',
+        textinfo = 'label+percent',
+        hoverinfo = 'text',
+        marker = list(colors = colors,
+                      line = list(color = '#FFFFFF')),
+        showlegend = TRUE) %>%
+  layout(title = 'Figure 3.8.1 Room Type Proportion',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=3}
+#####
+airbnb_se_2 <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% dplyr::select(room_type, price)
+type_se <- airbnb_se_2  %>% group_by(room_type) %>% 
+  summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+ggplot(type_se, aes(y=mean_price, x=room_type, fill=room_type)) + 
+      geom_bar(stat="identity") + scale_fill_brewer(palette = "RdPu") +
+      scale_x_discrete(name ="Different Room Type") + 
+      scale_y_continuous(name="price($)", breaks = seq(0, 1000, by = 50)) + 
+      ggtitle("Figure 3.8.2 Price ~ Room type") + 
+      theme_bw() +
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold"),  
+            axis.text.x  = element_text(vjust=0.5, size=10)) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+#####e. Reviews
+
+Next, Figure 3.9.1 and Figure 3.9.2 show the prices over review rate score and numbers of review. It can be analyzed that with the increase in number of reviews, the average rental price increase. 
+ 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=5}
+c1 <- ggplot(airbnb_se_1, aes(x=review_scores_rating, y=price)) + geom_point(color="pink") + 
+      geom_abline(size=1.2, color="green") +
+      theme_bw() +  ggtitle("Figure 3.9.1 Price over Rate Scores")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+c2 <- ggplot(airbnb_se_1, aes(x=number_of_reviews, y=price)) + geom_point(color="pink") + 
+      geom_abline(size=1.2, color="green") +
+      theme_bw() +  ggtitle("Figure 3.9.2 Price over numbers of review")+  
+      theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(c1,c2, nrow=2)
+```
+
+#####f. Neighbourhood
+
+Speaking of housing, most of the rental prices depend on the geographic feature. Houses in downtown are more expensive than those in suburb area. Further, the distance to shopping center or traffic station is also inneggligible if we try to list a fair rental price. 
+
+The bar plot (Figure 3.10) below shows the average prices in different neighbourhood. 
+
+To give a better understanding of the price in different neighbourhoods, I plotted a heatmap (Figure 3.11) to show the average room prices in different neighbourhoods with different room types.  
+
+Next, from the heatmap (Figure 3.12), with the increase in the number of bedrooms, the average price of Airbnb listings in Seattle increase. Although it depends upon the neighbourhoods as well.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=5, fig.height=4}
+ne_se <- airbnb_se %>% dplyr::select(neighbourhood)
+ne_se <- ne_se %>% dplyr::group_by(neighbourhood) %>% summarise(n=n())
+
+ggplot(ne_se, aes(y=n, x=reorder(x=neighbourhood, n))) + 
+  geom_bar(fill="lightpink1", stat = "identity") + theme_light() +   
+  scale_x_discrete(name ="Neighbourhood") + 
+  scale_y_continuous(name = "count") +
+  ggtitle("Figure 3.10 Count in Different Neighbourhood") + 
+  theme(axis.title.x = element_text(face="bold",  size=12), 
+        axis.title.y = element_text(face="bold",  size=12),
+        plot.title = element_text(size=14, face="bold"),  
+        axis.text.x  = element_text( vjust=0.5, size=10)) +
+  theme(plot.title = element_text(hjust = 0.5)) + theme(legend.position="none") + coord_flip()
+```
+
+```{r  echo=FALSE,message=FALSE, warning=FALSE, fig.width=6, fig.height=4}
+airbnb_se_nei <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% dplyr::select(room_type, price,neighbourhood)
+nei_se <- airbnb_se_nei %>% group_by(room_type,neighbourhood) %>% 
+  summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+
+
+
+ggplot(data = nei_se, mapping = aes(x = room_type,y =neighbourhood, fill = mean_price)) + 
+  geom_tile() + geom_text(aes(label = round(mean_price,0)), size=3)+ scale_fill_gradient(name = "Average Price",
+                      low = "ivory",
+                      high = "hotpink")  + xlab(label = "Room Type") + ylab(label = "Neighbourhood") +theme_classic()+ ggtitle("Figure 3.11 Neighbourhood ~ Room type")+ theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.width=6, fig.height=4}
+####3
+airbnb_se_be <- airbnb_se %>% filter(price > 0 & price <= 1000) %>% filter(bedrooms <= 10) %>% dplyr::select(bedrooms, price,neighbourhood)
+bed_se <- airbnb_se_be %>% group_by(bedrooms,neighbourhood) %>% 
+  summarise(mean_price = mean(price)) %>% arrange(desc(mean_price))
+
+ 
+ggplot(data = bed_se, mapping = aes(x = bedrooms, y =neighbourhood, fill = mean_price)) + 
+  geom_tile() + geom_text(aes(label = round(mean_price,0)), size=3)+ scale_fill_gradient(name = "Average Price",
+                      low = "ivory",
+                      high = "hotpink")  + xlab(label = "Number of bedroom") + ylab(label = "Neighbourhood") +theme_classic()+ ggtitle("Figure 3.12 Neighbourhood ~ Bedroom")+ theme(axis.title.x = element_text(face="bold",  size=12), 
+            axis.title.y = element_text(face="bold",  size=12),
+            plot.title = element_text(size=14, face="bold")) +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+We can also see the price changes depend on neighbourhood by the mapping below: the rental prices in 'Downtown' are higher than other neighbourhoods and neighbourhoods that are far from the urban area have less listings and lower prices.
+
+```{r echo=FALSE ,message=FALSE, warning=FALSE}
+library(leaflet.extras)
+airbnb_se_map <- airbnb_se %>% filter(price > 0 & price <= 400)
+pal <- colorQuantile(
+  palette = "YlOrRd",
+  domain = airbnb_se_map$price
+)
+leaflet(airbnb_se_map) %>% addTiles() %>%
+  addCircles(lng = ~longitude, lat = ~latitude, weight = 1,
+    popup = ~price, radius = 50, 
+    color = ~pal(price), fillOpacity = 1) 
+```
+
+#####g. Others: Amenities
+
+Word cloud below shows the most frequent amenities among the Airbnb price lower than 500 USD.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE}
+###wordcloud
+library(tm)
+airbnb_se$amenities <- gsub('\\s+', '', airbnb_se$amenities)
+air500 <- airbnb_se %>%  filter(price > 0 & price <= 500)
+# build a corpus, and specify the source to be character vectors
+myCorpus <- Corpus(VectorSource(air500$amenities))
+# convert to lower case
+
+tdm <- TermDocumentMatrix(myCorpus, control = list(wordLengths = c(1, Inf)))
+
+library(RColorBrewer)
+m <- as.matrix(tdm)
+# calculate the frequency of words and sort it by frequency
+word.freq <- sort(rowSums(m), decreasing = T)
+# colors
+pal <- brewer.pal(11, "PiYG")[(4:1)]
+#wordclouD
+library(wordcloud)
+wordcloud(words = names(word.freq), freq = word.freq, min.freq = 3,
+random.order = F, colors = pal)
+```
+
+Based on the explortary data analysis, the prices of listings on Airbnb depends upon the number of bedrooms, number of bathrooms, number of accommodates, number of reviews, room type, property type, and neighbourhood. 
+
+##4. Method
+
+####4.1 Model used
+
+####a. Initial Model (model 1)
+
+First, I fit a classic linear regression model without group variabls and do a coefficient plot. Table 2.1 and 2.2 below shows the coefficient of this model and AIC & R-square value. Then, I use residual plots and marginal model plots to check the fit of my initial model. Most of the variables seemed significant. However, the R-square is lower than 0.5. From the marginal model plots, we can see the marginal relationships between the response (log(price)) and each predictors. From the residual plot, we can see that there is no non-linear relationship, which indicates that this initial model is not bad. 
+
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+## First non-multilevel model withoud group variables
+library(lava)
+airbnb_se_m <- airbnb_se %>% filter(price > 0 & price <= 1000) 
+```
+
+```{r}
+lm1 <- lm(log(price) ~ bedrooms + bathrooms + accommodates + 
+       review_scores_rating + number_of_reviews, data = airbnb_se_m)
+```
+
+##### Table 2.1
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+kable(data.frame(AIC = 10717.01, Rsquare = 0.3828073))
+#AIC(lm1)
+#summary(lm1)$adj.r.squared
+```
+
+##### Table 2.2
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+kable(coefficients(summary(lm1 <- lm(log(price) ~ bedrooms + bathrooms + accommodates + review_scores_rating 
+          + number_of_reviews, data = airbnb_se_m))))
+```
+
+```{r  echo=FALSE , message=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(lm1)
+mmps(lm1, sd=TRUE)
+```
+
+#####b. Second Model (model 2)
+
+Next, I adjusted model by adding group variable 'neighbourhood' and 'room type' and take log of price. Most variables seemed significant: bedrooms, bathrooms, accommodates, review_scores_rating, room_type, numbers_of_reviews. Table 3.1 and 3.2 below shows the coefficient of the second model and AIC & R-square value. R-square is over 0.5 and p-value is pretty small. Also, from the residual plot we can see that there is no non-linear relationships and it is much better than the residual plot of model 1. Therefore, this model is slightly better than the initial model in most cases.
+
+```{r }
+lm2 <- lm(log(price) ~ bedrooms + accommodates + bathrooms + review_scores_rating + 
+          neighbourhood +property_type + room_type + number_of_reviews, data = airbnb_se_m)
+```
+
+#####Table 3.1
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+kable(data.frame(AIC = 6663.859, Rsquare = 0.6398352))
+```
+
+#####Table 3.2
+```{r echo=FALSE ,message=FALSE, warning=FALSE}
+kable(coefficients(summary(lm2 <- lm(log(price) ~ bedrooms*accommodates + bathrooms + review_scores_rating + 
+          neighbourhood +property_type + room_type + number_of_reviews, data = airbnb_se_m))))
+```
+
+```{r echo=FALSE ,message=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(lm2)
+mmps(lm2, sd=TRUE)
+```
+
+#####Model Comparison
+
+According to the Anova test, model 2 is better than model 1 because of the lower residual diviance and small p-valiue. Table 4 below show the result of anova test.
+
+#####Table 4
+```{r echo=FALSE ,message=FALSE, warning=FALSE}
+anova.test <- anova(lm1,lm2)
+```
+
+```{r echo=FALSE ,message=FALSE, warning=FALSE}
+kable(anova.test)
+```
+
+Figure 4.1 and 4.2 give a visualized comparison of price changes over number of bedrooms and how it changes within different neighbourhoods. 
+
+```{r echo=FALSE , message=FALSE, warning=FALSE, fig.width=7, fig.height=4}
+### group: neighbourhood
+p1 <- ggplot(airbnb_se_m)+
+  geom_point(aes(x=bedrooms,y=price,color=factor(neighbourhood)),alpha=0.3)+
+  stat_smooth(aes(x=bedrooms,y=price),se=FALSE,method = "lm") + theme_bw() +
+  theme(legend.position="none") + ggtitle("Figure 4.1 Price ~ Bedroom")
+
+
+### Classic Linear Regression Model within Areas
+p3 <- ggplot(airbnb_se_m)+geom_point()+aes(x=bedrooms,y=price)+
+  facet_wrap(~neighbourhood)+geom_smooth(method="lm",se=TRUE)+ theme_bw()+
+  xlab("Numbers of Bedrooms")+ ylab("Price ($)")+ 
+  ggtitle("Figure 4.2 Price ~ Bedroom (Group: Neighbourhood)")
+
+grid.arrange(p1,p3, nrow=1)
+```
+
+#####b. Third Model (model 3)
+
+For the third model, I fitted a varying interpect model by grouping level vairables “neighbourhood" with 'lmer'. The residual plot looks pretty random. However, both the deviance and AIC value are bigger than the second model. 
+
+```{r }
+lm3 <- lmer(log(price) ~ bedrooms + bathrooms + accommodates + review_scores_rating + 
+          (1 | neighbourhood) + room_type + number_of_reviews, data = airbnb_se_m)
+display(lm3)
+```
+
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+plot(resid(lm3))
+library(markdown)
+```
+
+##5. Result 
+
+####5.1 Model choice 
+
+I began to predict the rental price by fitting a linear regression and checking the residuals plots. The initial model was fitted by using bedrooms, bathrooms, accommodates, review_scores_rating and number_of_reviews as predictors and log(price) as reponse. Except 'bathrooms', all other variables seemed significant. The residual plots did not show any non-linear relationships. From the marginal plots, we can see that 'bedrooms' and 'accommodates' show higher importance to log(price) rather than other predictors. However, the R-square is lower than 0.5 and AIC is 10717.01. 
+
+Then, I fitted second model by adding group vairables 'neighbourhood', 'property_type' and 'room type'. Most of the variables seemed significant and the residual plots is better than the initial models. Same as the inital model, the marginal model plots show higher importance of variable 'bedrooms' and 'accommocdates' rather than other variables. R-square is 0.64 which is higher than the R-square of initial model. In addition, the AIC decrease by nearly 4000, which is 6652.942. Further, based on the result of Anova test, the second model has lower residual deviance than the initial model. Therefore, second model is much better than the initial model. 
+
+Lastly, I fitted a varying interpect model by grouping level vairable “neighbourhood" with 'lmer'. However, both deviance and AIC value are bigger than the second model. 
+
+Based on the results I got from these three model, I chose the second model as the final model to predict the rental price of Airbnb listings in Seattle. 
+
+####5.2 Interpretations
+
+According to the summary of second model, percentage changes in price were driven by the following variables: room_type, property_type, neighborhood, number_of_reviews, review_scores_rating, accommodates, bedrooms and bathrooms. 
+
+####5.3 Model checking 
+
+#### Predictd vs. Actual Plot
+
+By using the second model to predict the rental price in Seattle, I splited the dataset into 2 part. 80% of the dataset was used as train data, and 20% of the dataset was used as test data to for predicting. After I predicted the price of test data and compare with the origin data. The lowest RMSE of the prediction came out to be USD 63 and the MAE is around 39%. On a closer look at the prediction error, I made two plots, one is the price distribution of test data with origin price （Figure5.1), the other one is the price distribution of test data with predict price (Figure 5.2). The difference between these two plots is very apparent. 
+
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+library(stats)
+airbnb_se_m <- airbnb_se %>% filter(price > 0 & price <= 1000) 
+
+train1 = airbnb_se_m[1:6888,]
+test1 = airbnb_se_m[6889:8610,]
+
+lm4 <- lm(log(price) ~ bedrooms + accommodates + bathrooms + review_scores_rating + 
+          neighbourhood + room_type + number_of_reviews, data = train1)
+
+predictions <- predict(lm4, test1)
+#kable(data.frame(RMSE = RMSE(exp(predictions), test1$price, na.rm = TRUE ),
+            #MAE = MAE(exp(predictions), test1$price, na.rm = TRUE )))
+
+kable(data.frame(RMSE = 63.7325, MAE = 39.3258))
+
+new <- cbind(predictions,test1)
+
+z1 <- ggplot(new, aes(price, fill = room_type)) + 
+  geom_histogram(binwidth = 10) + theme_light() +   
+  scale_fill_brewer(palette = "RdPu") + 
+  scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 200)) + 
+  scale_y_continuous(name="Frequency of Price ")+ 
+  ggtitle("Figure 5.1 Price Distribution(Train)") + 
+  theme(axis.title.x = element_text(face="bold",  size=12), 
+        axis.title.y = element_text(face="bold",  size=12),
+        plot.title = element_text(size=14, face="bold"),  
+        axis.text.x  = element_text(vjust=0.5, size=10)) +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+z2 <- ggplot(new, aes(exp(predictions), fill = room_type)) + 
+  geom_histogram(binwidth = 10) + theme_light() +   
+  scale_fill_brewer(palette = "RdPu") + 
+  scale_x_continuous(name ="Price ($)", breaks = seq(0, 1000, by = 200)) + 
+  scale_y_continuous(name="Frequency of Price ")+ 
+  ggtitle("Figure 5.2 Price Distribution(Test)") + 
+  theme(axis.title.x = element_text(face="bold",  size=12), 
+        axis.title.y = element_text(face="bold",  size=12),
+        plot.title = element_text(size=14, face="bold"),  
+        axis.text.x  = element_text(vjust=0.5, size=10)) +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+grid.arrange(z1,z2, nrow=2)
+```
+
+##6. Discussion 
+
+####6.1 Implications
+
+By using the Airbnb listings dataset in Seattle, I builded a linear regression model to predict the the rental price. This pricing tool could be applicable since hosts can make use of available data and get a reference about how to fix a fair rental price.  Guests could use it to check if the room they would like to rent has a reasonable price. 
+
+####6.2 Limitation
+
+Airbnb listings contain different kinds of rooms. There could be two rooms with exactly same features but totally different prices. Price not only depends on the features of room, but also other factors such as furnitures,  new or old houses, amenities or level of the rooms. Since there is no classification system for Airbnb like star rating for Hotels,  predicting the rental price only depends upon the features in historical data is inaccurate sometimes. 
+
+####6.3 Future direction
+
+Because of the limit of time, some features were not used in this project. In future studies, I may include more features such as 'minimum_nights', 'maximum_nights', 'cleansing_fee' and time vairables to optimize the model's accuracy. Second, I would do some text mining by using some text based features such as 'amenities', 'name' and 'reviews' and convert some texts into features. Further, I might compare the rental price of Airbnb listings in Seattle with the price of Hotel in different neighbourhood. 
+
+##7. Reference 
+
+https://www.airbnb.com/diversity 
+
+http://insideairbnb.com/get-the-data.html
