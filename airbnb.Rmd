@@ -494,6 +494,7 @@ By using the second model to predict the rental price in Seattle, I splited the 
 
 ```{r echo=FALSE , message=FALSE, warning=FALSE}
 library(stats)
+library(caret)
 airbnb_se_m <- airbnb_se %>% filter(price > 0 & price <= 1000) 
 
 train1 = airbnb_se_m[1:6888,]
@@ -503,8 +504,8 @@ lm4 <- lm(log(price) ~ bedrooms + accommodates + bathrooms + review_scores_ratin
           neighbourhood + room_type + number_of_reviews, data = train1)
 
 predictions <- predict(lm4, test1)
-#kable(data.frame(RMSE = RMSE(exp(predictions), test1$price, na.rm = TRUE ),
-            #MAE = MAE(exp(predictions), test1$price, na.rm = TRUE )))
+kable(data.frame(RMSE = RMSE(exp(predictions), test1$price, na.rm = TRUE ),
+            MAE = MAE(exp(predictions), test1$price, na.rm = TRUE )))
 
 kable(data.frame(RMSE = 63.7325, MAE = 39.3258))
 
